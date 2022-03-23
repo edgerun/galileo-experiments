@@ -1,6 +1,122 @@
-# Galileo Client
+# Galileo Experiments
 
-This repo contains code that invokes the galileo shell to start experiments.
+This repository contains code that invokes the galileo shell to start experiments.
+It also includes deployment files for necessary components and describes in detail which other services are 
+required to start an experiment.
+Further, this project aims to unify different sub-projects of `edgerun` and make deployment and experiment setup easy.
+The main goals and functionalities are:
+
+* A framework for distributed load testing experiments
+* Fine-grained telemetry data collection
+* HTTP Trace recording for any service
+* A container orchestration adaption for ease of use
+
+## Who is this project for?
+
+For everyone that wants to see resource usage and application performance with easy configurable workload creation.
+All components are tailored and suited to run on low performance devices (i.e., Raspberry Pi) but can run on default server VMs too.
+
+Common questions that can be answered by performing and analyzing Galileo experiments:
+
+* How much CPU usage does my application use?
+* What is the average execution time of my application across the cluster?
+* What are the differences in terms of resource usage between two nodes hosting the same application?
+* What is the impact of having multiple applications running on one node?
+
+All these questions can be easily answered and have a simple flow in common:
+1. Deploy base infrastructure
+2. Deploy my application
+3. Start requests
+4. Analyze in Jupyter Notebooks
+
+In summary: simple profiling tasks.
+But, this framework also targets full end-to-end tests to evaluate important cluster components (i.e, load balancer, scheduler and scaling).
+
+Therefore, experiments can be done to evaluate new implementations for  the aforementioned components.
+
+
+# High level overview
+
+
+
+# Kubernetes cluster setup
+
+![Cluster components](figures/cluster.drawio.png)
+
+## Overview
+
+### Main components
+The cluster setup consists of the following main components:
+
+* Kubernetes
+* Galileo (for clients and experiment shell)
+* Telemd
+* Controller (i.e., the load balancer)
+* MySQL (i.e., MariaDB)
+* InfluxDB v2
+* Etcd (Kubernetes requires an instance to run!)
+
+Kubernetes is used to host the clients (galileo running in a Pod), telemetry agents (telemd), load balancer and the applications to test.
+Redis is used as a pub/sub system through which all data is sent (i.e., telemetry) and recorded by the Galileo Shell (i.e., the program that prepares and executes an experiment).
+The Galileo Shell persists data in MariaDB and InfluxDB.
+The provided load balancer implementation uses etcd to watch for weights for the round-robin algorithm and galileo uses redis to provide the clients with routing rules (`rtbl`).
+
+
+
+## Main interactions
+
+The figure above depicts all components and also highlights important interactions.
+Those interactions are in short:
+* Client nodes send HTTP requests to the Controller (load balancer), which forwards requests to the worker nodes which host the application pods.
+* Client nodes report the results of each request (i.e., trace) via Redis. 
+* The Go-based load balancer implementation fetches weights and ip addresses from the etcd instance.
+* The clients get the routing rules from the Redis instance (set via `rtbl` from Galileo)
+* Worker nodes report resource usage (i.e., telemd) via Redis, which is saved in InfluxDB
+* The Galileo Shell starts the experiments and saves metadata (i.e., the cluster hosts, misc. data) in the MariaDB
+
+
+## Deployment 
+
+This project provides deployment files for the following components:
+* Galileo (for clients and experiment shell)
+* Telemd
+* Controller (i.e., the load balancer)
+
+Which leaves the following components to be additionally deployed:
+
+* Kubernetes
+* MySQL (i.e., MariaDB)
+* InfluxDB v2
+* Etcd (Kubernetes requires an instance to run!)
+
+Deployment files can be found in `deployment/kubernetes`.
+Note, that we use Kubernetes node labels to schedule the workers (i.e., clients).
+On nodes that should act as clients execute the following command:
+
+    kubectl label node <node> node-role.kubernetes.io/client=true
+
+The following label is used to identify nodes with hosting capabilities (i.e., workers):
+
+    kubectl label node <node> node-role.kubernetes.io/worker=true
+
+If you have multiple zones (i.e., clusters) in which you want to have seperate clients, adapt the `zone`  arguments (default is `main`).
+You can easily group your nodes by labelling it with the following command:
+
+    kubectl label node <node> ether.edgerun.io/zone=main
+
+## Galileo Workers
+
+
+
+# Data storage
+
+Galileo requires the following data components that are either deployed in the cluster or externally:
+
+* Redis (pub/sub for telemetry and traces)
+* MySQL (i.e., MariaDB) (persistent storage for experiment metadata)
+* InfluxDB v2 (stores runtime data - telemetry and traces)
+
+
 
 Environment variables
 =====================
