@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: galileo-worker-main
+  labels:
+    app: galileo-worker-main
+spec:
+  selector:
+    matchLabels:
+      app: galileo-worker-main
+  template:
+    metadata:
+      labels:
+        app: galileo-worker-main
+        ether.edgerun.io/zone: main
+        ether.edgerun.io/function: client
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/client: "true"
+        ether.edgerun.io/zone: main
+      containers:
+      - name: galileo-worker
+        image: edgerun/galileo:0.10.4.dev1
+        command: ["python", "-u", "-m", "galileo.cli.worker"]
+        envFrom:
+        - configMapRef:
+            name: galileo-worker-config-main

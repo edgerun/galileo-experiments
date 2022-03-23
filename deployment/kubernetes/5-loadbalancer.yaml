@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: go-load-balancer-deployment-main
+spec:
+  selector:
+    matchLabels:
+      app: go-load-balancer
+  template:
+    metadata:
+      labels:
+        app: go-load-balancer
+        type: api-gateway
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/controller: "true"
+        ether.edgerun.io/zone: main
+      containers:
+      - name: go-load-balancer
+        image: git.dsg.tuwien.ac.at:5005/edgebench/go-load-balancer:0.1.8
+        ports:
+        - containerPort: 8080
+          hostPort: 8080
+        env:
+        - name: eb_go_lb_etcd_host
+          value: "ip:port"
+        - name: eb_go_lb_zone
+          value: main
+        - name: eb_go_lb_handler_type
+          value: "wrr"
+        - name: eb_go_lb_listen_port
+          value: "8080"
+        - name: eb_go_lb_mode
+          value: "dev"
+        - name: eb_go_lb_gateways
+          value: "<host-ip-address> [<ip addresses of other load balancers>]"
+        - name: eb_go_lb_node_name
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName

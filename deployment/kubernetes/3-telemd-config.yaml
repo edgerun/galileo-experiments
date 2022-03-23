@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemd-config
+  namespace: default
+data:
+  telemd_period_cpu: "5s"
+  telemd_period_freq: "5s"
+  telemd_period_ram: "5s"
+  telemd_period_disk: "5s"
+  telemd_period_net: "5s"
+  telemd_period_load: "5s"
+  telemd_period_procs: "5s"
+  telemd_period_kubernetes_cgrp_cpu: "5s"
+  telemd_period_kubernetes_cgrp_blkio: "5s"
+  telemd_period_kubernetes_cgrp_memory: "5s"
+  telemd_period_psi_cpu: "5s"
+  telemd_period_psi_io: "5s"
+  telemd_period_psi_memory: "5s"
+  telemd_redis_url: redis-url
+  telemd_instruments_disable: docker_cgrp_cpu docker_cgrp_net docker_cgrp_blkio

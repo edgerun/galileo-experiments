@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: telemd-cpu
+  labels:
+    app: telemd-cpu
+spec:
+  selector:
+    matchLabels:
+      app: telemd-cpu
+  template:
+    metadata:
+      labels:
+        app: telemd-cpu
+    spec:
+      hostNetwork: true
+      volumes:
+      - name: sys
+        hostPath:
+         path: /sys
+      containers:
+      - name: telemd
+        image: edgerun/telemd:0.8.4
+        env:
+        - name: telemd_nodename
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          privileged: true
+        envFrom:
+        - configMapRef:
+            name: telemd-config
+        volumeMounts:
+        - name: sys
+          mountPath: /sys

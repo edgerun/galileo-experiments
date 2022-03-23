@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: galileo-worker-config-main
+  namespace: default
+data:
+  galileo_redis_host: host
+  galileo_redis_password: password
+  galileo_trace_logging: redis
+  galileo_logging_level: WARN
+  galileo_zone: main
