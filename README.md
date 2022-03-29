@@ -106,6 +106,11 @@ You can easily group your nodes by labelling it with the following command:
 
 ## Galileo Workers
 
+The galileo workers run on each client node and is connected via Redis to receive commands and also the routing rules.
+Routing rules are simple key-value pairs, whereas the key represents your service name and the value is a list of hosts 
+with the respective weight.
+
+You can easily set these in your program via `rtbl.set('service', ['127.0.0.1:8080], [1])`.
 
 
 # Data storage
@@ -116,7 +121,12 @@ Galileo requires the following data components that are either deployed in the c
 * MySQL (i.e., MariaDB) (persistent storage for experiment metadata)
 * InfluxDB v2 (stores runtime data - telemetry and traces)
 
+All connection parameters are set via environment variables.
 
+# Extensions
+
+The extension module is meant to provide examples  on how to implement and use the project to run experiments.
+It will be continually updated and include new services.
 
 Environment variables
 =====================

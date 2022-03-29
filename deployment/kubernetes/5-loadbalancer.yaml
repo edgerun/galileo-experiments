@@ -18,7 +18,7 @@ spec:
         ether.edgerun.io/zone: main
       containers:
       - name: go-load-balancer
-        image: git.dsg.tuwien.ac.at:5005/edgebench/go-load-balancer:0.1.8
+        image: edgerun/go-load-balancer:0.1.8
         ports:
         - containerPort: 8080
           hostPort: 8080
