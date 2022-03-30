@@ -7,7 +7,7 @@ VENV_ACTIVATE = . $(VENV_DIR)/bin/activate
 all :
 	@echo "select a build target"
 
-ROOT_DIR = faassim
+ROOT_DIR = galileoexperiments
 
 venv: $(VENV_DIR)/bin/activate
 
@@ -22,7 +22,6 @@ clean:
 	rm -rf .eggs/
 	find -iname "*.pyc" -delete
 	rm -rf __pycache__
-	find tests -type d -name "__pycache__" -delete
 	find $(ROOT_DIR) -type d -name "__pycache__" -delete
 
 clean-venv:
