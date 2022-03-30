@@ -1,4 +1,4 @@
-edgerun-galileo==0.10.4.dev1
+edgerun-galileo==0.10.4.dev2
 galileo-db==0.10.4.dev1
 
 redis~=3.5.3
