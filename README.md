@@ -125,8 +125,9 @@ All connection parameters are set via environment variables.
 
 # Extensions
 
-The extension module is meant to provide examples  on how to implement and use the project to run experiments.
+The [extension repository](https://github.com/edgerun/galileo-experiments-extensions) is meant to provide examples  on how to implement and use the project to run experiments.
 It will be continually updated and include new services.
+
 
 Environment variables
 =====================
