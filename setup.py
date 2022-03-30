@@ -12,7 +12,7 @@ with open("requirements.txt", "r") as fh:
     install_requires = [line for line in fh.read().split(os.linesep) if line]
 
 setuptools.setup(
-    name="galileo-experiments",
+    name="edgerun-galileo-experiments",
     version="0.0.1.dev1",
     author="Philipp Raith, Thomas Rausch",
     author_email="p.raith@dsg.tuwien.ac.at, t.rausch@dsg.tuwien.ac.at",
