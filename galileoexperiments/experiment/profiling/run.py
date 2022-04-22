@@ -26,7 +26,7 @@ def _run(config: ProfilingExperimentConfiguration):
         url = f'{config.host}:8080'
         logger.info(f"Set routing table '{service} - {url}'")
         rtbl.set(service, [url], [1])
-        run_experiment(config.exp_run_config)
+        return run_experiment(config.exp_run_config)
     finally:
         if rtbl is not None:
             logger.info(f"Remove routing table '{service}'")
@@ -168,7 +168,7 @@ def run_profiling_experiment(config: ProfilingExperimentConfiguration):
         if config.exp_run_config.exp_name is None:
             experiment_name = f'{name}-clients-{n_clients}-{int(time.time())}'
             config.exp_run_config.exp_name = experiment_name
-        _run(config)
+        return _run(config)
     except Exception as e:
         logger.error(e)
     finally:
