@@ -29,6 +29,8 @@ class EtcdClient:
     def write(self, key: str, value: str):
         self._etcd_client.put(key, value)
 
+    def remove(self, key: str):
+        self._etcd_client.delete(key)
 
 def set_weights_rr(pods: List[Pod], zone: str, fn: str):
     client = EtcdClient.from_env()
@@ -40,6 +42,7 @@ def set_weights_rr(pods: List[Pod], zone: str, fn: str):
     value = json.dumps(weights)
     logger.info(f'Set following in etcd {key} - {value}')
     client.write(key=key, value=value)
+    return key
 
 
 def set_weight(pod: Pod, weight: int):

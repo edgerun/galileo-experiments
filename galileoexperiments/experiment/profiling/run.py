@@ -3,12 +3,13 @@ import time
 
 from galileo.shell.shell import RoutingTableHelper, Galileo
 
-from galileoexperiments.api.model import ProfilingExperimentConfiguration, ProfilingWorkloadConfiguration, \
-    ExperimentRunConfiguration
-from galileoexperiments.experiment.run import run_experiment
+from galileoexperiments.api.model import ProfilingWorkloadConfiguration, \
+    ExperimentRunConfiguration, AppWorkloadConfiguration, ProfilingExperimentConfiguration
+from galileoexperiments.api.profiling import GalileoClientGroupConfig
+from galileoexperiments.experiment.run import run_profiling_experiment
 from galileoexperiments.utils.arrivalprofile import clear_list, read_and_save_profile
 from galileoexperiments.utils.constants import function_label, zone_label
-from galileoexperiments.utils.helpers import set_weights_rr
+from galileoexperiments.utils.helpers import set_weights_rr, EtcdClient
 from galileoexperiments.utils.k8s import spawn_pods, get_pods, remove_pods
 
 logger = logging.getLogger(__name__)
@@ -23,10 +24,10 @@ def _run(config: ProfilingExperimentConfiguration):
     service = f'{config.app_name}-{config.zone}'
 
     try:
-        url = f'{config.host}:8080'
+        url = f'{config.lb_ip}:8080'
         logger.info(f"Set routing table '{service} - {url}'")
         rtbl.set(service, [url], [1])
-        return run_experiment(config.exp_run_config)
+        return run_profiling_experiment(config)
     finally:
         if rtbl is not None:
             logger.info(f"Remove routing table '{service}'")
@@ -54,17 +55,24 @@ def run_profiling_workload(workload_config: ProfilingWorkloadConfiguration):
     if use_profiles:
         profiles = workload_config.profiles
         workload_config.params['exp']['requests']['profiles'] = profiles
-        workload_config.params['exp']['requests']['n_clients'] = len(profiles)
+        n_clients = len(profiles)
+        workload_config.params['exp']['requests']['n_clients'] = n_clients
         workload_config.params['exp']['requests']['no_pods'] = workload_config.no_pods
 
-        client_group = profiling_app.spawn_group(rds, galileo, workload_config)
+        client_group_config = GalileoClientGroupConfig(
+            n_clients=n_clients,
+            zone=workload_config.zone,
+            fn_name=workload_config.app_name,
+            params=workload_config.params
+        )
+
+        client_group = profiling_app.spawn_group(n_clients, rds, galileo, client_group_config)
         time.sleep(1)
         for index, client in enumerate(client_group.clients):
             profile_path = profiles[index]
             clear_list(client.client_id, rds)
             read_and_save_profile(profile_path, client, rds)
 
-        n_clients = len(profiles)
 
         def requests():
             client_group.request(ia=('prerecorded', 'ran')).wait()
@@ -73,26 +81,28 @@ def run_profiling_workload(workload_config: ProfilingWorkloadConfiguration):
         try:
             exp_run_config = ExperimentRunConfiguration(
                 creator=creator,
-                requests=requests,
                 master_node=master_node,
                 galileo_context=workload_config.context,
                 metadata=workload_config.params,
-                hosts=[host]
             )
-
+            app_workload_config = AppWorkloadConfiguration(
+                app_container_image=image,
+                pod_factory=profiling_app.pod_factory,
+                requests=requests,
+            )
             config = ProfilingExperimentConfiguration(
                 app_name=workload_config.app_name,
                 zone=zone,
                 host=host,
                 no_pods=workload_config.no_pods,
                 n_clients=n_clients,
-                app_container_image=image,
+                app_workload_config=app_workload_config,
                 exp_run_config=exp_run_config,
-                pod_factory=profiling_app.pod_factory
+                lb_ip=workload_config.lb_ip
             )
 
             logger.info(f'run: {workload_config.params}')
-            run_profiling_experiment(config)
+            _run_profiling_experiment(config)
 
         except Exception as e:
             logger.error(e)
@@ -103,7 +113,14 @@ def run_profiling_workload(workload_config: ProfilingWorkloadConfiguration):
         workload_config.params['exp']['requests']['n_clients'] = workload_config.n_clients
         workload_config.params['exp']['requests']['no_pods'] = workload_config.no_pods
 
-        client_group = profiling_app.spawn_group(rds, galileo, workload_config)
+        client_group_config = GalileoClientGroupConfig(
+            n_clients=workload_config.n_clients,
+            zone=workload_config.zone,
+            fn_name=workload_config.app_name,
+            params=workload_config.params
+        )
+
+        client_group = profiling_app.spawn_group(workload_config.n_clients, rds, galileo, client_group_config)
 
         def requests():
             client_group.request(n=workload_config.n, ia=workload_config.ia).wait()
@@ -112,43 +129,45 @@ def run_profiling_workload(workload_config: ProfilingWorkloadConfiguration):
         try:
             exp_run_config = ExperimentRunConfiguration(
                 creator=creator,
-                requests=requests,
                 master_node=master_node,
                 galileo_context=workload_config.context,
                 metadata=workload_config.params,
-                hosts=[host]
             )
-
+            app_workload_config = AppWorkloadConfiguration(
+                app_container_image=image,
+                pod_factory=profiling_app.pod_factory,
+                requests=requests
+            )
             config = ProfilingExperimentConfiguration(
                 app_name=workload_config.app_name,
                 zone=zone,
                 host=host,
                 no_pods=workload_config.no_pods,
                 n_clients=workload_config.n_clients,
-                app_container_image=image,
+                app_workload_config=app_workload_config,
                 exp_run_config=exp_run_config,
-                pod_factory=profiling_app.pod_factory
+                lb_ip=workload_config.lb_ip
             )
 
             logger.info(f'run: {workload_config.params}')
-            run_profiling_experiment(config)
+            _run_profiling_experiment(config)
         except Exception as e:
             logger.error(e)
 
 
-def run_profiling_experiment(config: ProfilingExperimentConfiguration):
+def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
     pod_names = None
     params = config.exp_run_config.metadata
-    image = config.app_container_image
+    image = config.app_workload_config.app_container_image
     name = config.app_name
     host = config.host
     no_pods = config.no_pods
     n_clients = config.n_clients
-
+    etcd_service_key = None
     params['exp']['host'] = host
     params['exp']['zone'] = config.zone
     params['exp']['app_name'] = config.app_name
-    params['exp']['app_container_image'] = config.app_container_image
+    params['exp']['app_container_image'] = config.app_workload_config.app_container_image
 
     try:
         labels = {
@@ -156,13 +175,13 @@ def run_profiling_experiment(config: ProfilingExperimentConfiguration):
             zone_label: config.zone
         }
 
-        pod_names = spawn_pods(image, name, host, labels, no_pods, config.pod_factory)
+        pod_names = spawn_pods(image, name, host, labels, no_pods, config.app_workload_config.pod_factory)
         logger.info('Sleep for 5 seconds, to wait that pods are placed')
         time.sleep(5)
         pods = get_pods(pod_names)
 
         logger.info("Set weights for Pod(s)")
-        set_weights_rr(pods, config.zone, name)
+        etcd_service_key = set_weights_rr(pods, config.zone, name)
 
         time.sleep(1)
         if config.exp_run_config.exp_name is None:
@@ -175,3 +194,6 @@ def run_profiling_experiment(config: ProfilingExperimentConfiguration):
         if pod_names is not None:
             logger.info(f'Remove {len(pod_names)} pods')
             remove_pods(pod_names)
+        if etcd_service_key is not None:
+            client = EtcdClient.from_env()
+            client.remove(etcd_service_key)
