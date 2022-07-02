@@ -80,7 +80,8 @@ def get_pods(pod_names: List[str]) -> List[Pod]:
             ip = pod.status.pod_ip
             labels = pod.metadata.labels
             pod_id = pod.metadata.uid
-            pods.append(Pod(pod_id, ip, labels))
+            name = pod.metadata.name
+            pods.append(Pod(pod_id, ip, labels, name))
 
     return pods
 
@@ -104,7 +105,7 @@ def spawn_pods(image: str, name: str, node: str, labels: Dict[str, str], n: int,
     pods = []
     for idx in range(n):
         selector = {'kubernetes.io/hostname': node}
-        pod_name = f'{name}-{idx}'
+        pod_name = f'{name}-{node}-{idx}'
         pod = client.V1Pod(
             api_version="v1",
             kind="Pod",
