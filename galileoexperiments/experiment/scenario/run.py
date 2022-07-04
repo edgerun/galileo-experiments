@@ -1,11 +1,3 @@
-# TODO implement one function that does only the plumbing for the workers and does not start any experiment
-# TODO implement one function that prepares the experiment but does not invoke the previous function
-# TODO implement one function that calls the previous function, s.t. an experiment with different profiles is started
-# TODO use the functions in galileo-faas to implement invoke but also show how to start an experiment
-
-# deploy pods on nodes
-# set load balancer to pods
-# create clients
 import logging
 import time
 from typing import List, Dict, Tuple, Callable
