@@ -17,7 +17,7 @@ def read_and_save_profile(profile_path: str, client_desc: ClientDescription, rds
                 # prevents of using 0 because it may lead to crash
                 ias[index] = 0.00000000001
         list_key = client_desc.client_id
-        print('clear list')
+        print(f'clear list, with key: {list_key}')
         clear_list(list_key, rds)
         print('list cleared, start push')
         rds.lpush(list_key, *ias[0:])

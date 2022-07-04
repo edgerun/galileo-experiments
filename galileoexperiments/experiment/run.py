@@ -1,6 +1,5 @@
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
 
 from galileoexperiments.api.model import ProfilingExperimentConfiguration, ScenarioExperimentConfiguration, \
@@ -14,19 +13,8 @@ logger = logging.getLogger(__name__)
 def run_profiling_experiment(config: ProfilingExperimentConfiguration):
     run_experiment(config.exp_run_config, config.app_workload_config.requests)
 
-# TODO test profiling again and scenario
 
-def run_scenario_experiment(config: ScenarioExperimentConfiguration):
-    # make callable that calls all AppWorkloadConfigurations and waits for all to end
-    async_requests = []
-    for app in config.apps:
-        async_requests.append(app.requests)
-
-    def requests():
-        with ThreadPoolExecutor(max_workers=len(async_requests)) as executor:
-            for async_request in async_requests:
-                executor.submit(async_request)
-
+def run_scenario_experiment(config: ScenarioExperimentConfiguration, requests: Callable):
     return run_experiment(config.exp_run_config, requests)
 
 
@@ -67,7 +55,7 @@ def run_experiment(config: ExperimentRunConfiguration, requests: Callable):
         # set requests
         logger.info("start requests")
         requests()
-
+        time.sleep(5)
 
     except Exception as e:
         logger.error(e)
