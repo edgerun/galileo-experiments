@@ -160,6 +160,7 @@ def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
     params = config.exp_run_config.metadata
     image = config.app_workload_config.app_container_image
     name = config.app_name
+    pod_prefix = f'{name}-deployment'
     host = config.host
     no_pods = config.no_pods
     n_clients = config.n_clients
@@ -175,7 +176,7 @@ def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
             zone_label: config.zone
         }
 
-        pod_names = spawn_pods(image, name, host, labels, no_pods, config.app_workload_config.pod_factory)
+        pod_names = spawn_pods(image, pod_prefix, host, labels, no_pods, config.app_workload_config.pod_factory)
         logger.info('Sleep for 5 seconds, to wait that pods are placed')
         time.sleep(5)
         pods = get_pods(pod_names)
