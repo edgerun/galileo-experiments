@@ -27,7 +27,8 @@ def spawn_pods_for_config(workload_config: ScenarioWorkloadConfiguration) -> Lis
                 zone_label: workload_config.zone_mapping[host]
             }
             profiling_app = workload_config.profiling_apps[image]
-            names = spawn_pods(image, name, host, labels, no_pods, profiling_app.pod_factory)
+            pod_name_prefix = f'{name}-deployment'
+            names = spawn_pods(image, pod_name_prefix, host, labels, no_pods, profiling_app.pod_factory)
             pod_names.extend(names)
     # TODO remove sleep and implement approach to continuously poll for pods till their IP is available
     time.sleep(5)
