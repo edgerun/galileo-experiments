@@ -123,7 +123,8 @@ def run_profiling_workload(workload_config: ProfilingWorkloadConfiguration):
         client_group = profiling_app.spawn_group(workload_config.n_clients, rds, galileo, client_group_config)
 
         def requests():
-            client_group.request(n=workload_config.n, ia=workload_config.ia).wait()
+            # FIXME for some reason workers send only n-1 and not n requests
+            client_group.request(n=workload_config.n+1, ia=workload_config.ia).wait()
             client_group.close()
 
         try:
