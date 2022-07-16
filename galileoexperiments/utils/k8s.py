@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 from typing import List, Dict, Callable
 
@@ -70,14 +71,19 @@ def stop_telemd_kubernetes_adapter():
     v1.delete_namespaced_deployment(name='telemd-kubernetes-adapter', namespace='default')
 
 
-def get_pods(pod_names: List[str]) -> List[Pod]:
-    config.load_kube_config()
-    v1 = client.CoreV1Api()
+def get_pods(pod_names: List[str], v1: client.CoreV1Api=None) -> List[Pod]:
+    if v1 is None:
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
     pod_list = v1.list_namespaced_pod("default")
     pods = []
     for pod in pod_list.items:
         if pod.metadata.name in pod_names:
             ip = pod.status.pod_ip
+            if ip is None:
+                logger.info(f'Pod IP for {pod.metadata.name} is not yet available. Sleep for 5 seconds...')
+                time.sleep(5)
+                return get_pods(pod_names, v1)
             labels = pod.metadata.labels
             pod_id = pod.metadata.uid
             name = pod.metadata.name

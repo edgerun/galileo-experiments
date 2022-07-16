@@ -178,8 +178,6 @@ def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
         }
 
         pod_names = spawn_pods(image, pod_prefix, host, labels, no_pods, config.app_workload_config.pod_factory)
-        logger.info('Sleep for 5 seconds, to wait that pods are placed')
-        time.sleep(5)
         pods = get_pods(pod_names)
 
         logger.info("Set weights for Pod(s)")

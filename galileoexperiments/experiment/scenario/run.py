@@ -30,8 +30,6 @@ def spawn_pods_for_config(workload_config: ScenarioWorkloadConfiguration) -> Lis
             pod_name_prefix = f'{name}-deployment'
             names = spawn_pods(image, pod_name_prefix, host, labels, no_pods, profiling_app.pod_factory)
             pod_names.extend(names)
-    # TODO remove sleep and implement approach to continuously poll for pods till their IP is available
-    time.sleep(5)
     return get_pods(pod_names)
 
 
