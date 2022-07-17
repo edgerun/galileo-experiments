@@ -3,6 +3,7 @@ import time
 from dataclasses import dataclass
 from typing import List, Dict, Callable
 
+import kubernetes
 from kubernetes import client, config
 from kubernetes.client import V1Deployment, V1ObjectMeta, V1DeploymentSpec, V1LabelSelector, V1PodTemplateSpec, \
     V1PodSpec, V1Toleration, V1Container, V1EnvFromSource, V1ConfigMapEnvSource
@@ -134,7 +135,10 @@ def remove_pods(names: List[str]):
     config.load_kube_config()
     v1 = client.CoreV1Api()
     for name in names:
-        v1.delete_namespaced_pod(name, 'default', async_req=False)
+        try:
+            v1.delete_namespaced_pod(name, 'default', async_req=False)
+        except kubernetes.client.exceptions.ApiException:
+            logger.debug(f'Pod {name} was not available to teardown anymore')
 
 def fetch_pods(label: str, value: str):
     config.load_kube_config()
