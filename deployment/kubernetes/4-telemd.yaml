@@ -20,7 +20,7 @@ spec:
          path: /sys
       containers:
       - name: telemd
-        image: edgerun/telemd:0.9.2
+        image: edgerun/telemd:0.9.3
         env:
         - name: telemd_nodename
           valueFrom:
