@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Callable
+from typing import Callable, List
 
 from galileoexperiments.api.model import ProfilingExperimentConfiguration, ScenarioExperimentConfiguration, \
     ExperimentRunConfiguration
@@ -11,14 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 def run_profiling_experiment(config: ProfilingExperimentConfiguration):
-    run_experiment(config.exp_run_config, config.app_workload_config.requests)
+    run_experiment(config.exp_run_config, config.app_workload_config.requests, telemd_hosts=[config.host])
 
 
 def run_scenario_experiment(config: ScenarioExperimentConfiguration, requests: Callable):
     return run_experiment(config.exp_run_config, requests)
 
 
-def run_experiment(config: ExperimentRunConfiguration, requests: Callable):
+def run_experiment(config: ExperimentRunConfiguration, requests: Callable, telemd_hosts: List[str]=None):
+    """
+    Starts an experiment. That includes: discovering workers, starting tracing, starting telemd, the experiment
+    and the telemd-kubernetes-adapter. Then it waits for the telemd-kubernetes-adapter to publish events.
+    As soon as the first event arrives, the requests begin.
+    Afterwards, we stop tracing, telemd, the experiment and teardown the telemd-kubernetes-adapter
+    :param config: contains all components (i.e., telemd, galileo)
+    :param requests: function invoked after everything is setup, should start galileo workers
+    :param telemd_hosts: hosts that should emit telemetry. if None, tells all hosts to emit telemetry
+    :return:
+    """
     metadata = config.metadata
     if metadata is None:
         metadata = {}
@@ -35,7 +45,10 @@ def run_experiment(config: ExperimentRunConfiguration, requests: Callable):
 
         # unpause telemd
         logger.info(f"Unpause telemd")
-        config.telemd.start_telemd()
+        if telemd_hosts is not None:
+            config.telemd.start_telemd(telemd_hosts)
+        else:
+            config.telemd.start_telemd()
 
         # start exp
         logger.info("Start experiment and wait for 1 second")
