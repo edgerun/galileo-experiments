@@ -7,10 +7,11 @@ from galileoexperiments.api.model import ProfilingWorkloadConfiguration, \
     ExperimentRunConfiguration, AppWorkloadConfiguration, ProfilingExperimentConfiguration
 from galileoexperiments.api.profiling import GalileoClientGroupConfig
 from galileoexperiments.experiment.run import run_profiling_experiment
+from galileoexperiments.experiment.scenario.run import set_loadbalancer_weights
 from galileoexperiments.utils.arrivalprofile import clear_list, read_and_save_profile
 from galileoexperiments.utils.constants import function_label, zone_label
 from galileoexperiments.utils.helpers import set_weights_rr, EtcdClient
-from galileoexperiments.utils.k8s import spawn_pods, get_pods, remove_pods
+from galileoexperiments.utils.k8s import spawn_pods, get_pods, remove_pods, get_load_balancer_pods
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,12 @@ def run_profiling_workload(workload_config: ProfilingWorkloadConfiguration):
     host = workload_config.host
     image = workload_config.image
     profiling_app = workload_config.profiling_app
+
+    lb_pods = get_load_balancer_pods()
+    lb_ips = {}
+    for cluster, pod in lb_pods.items():
+        lb_ips[cluster] = pod.ip
+    workload_config.lb_ip = lb_ips[workload_config.zone]
 
     if workload_config.params.get('exp') is None or workload_config.params['exp'].get('requests') is None:
         workload_config.params['exp'] = {
@@ -165,7 +172,7 @@ def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
     host = config.host
     no_pods = config.no_pods
     n_clients = config.n_clients
-    etcd_service_key = None
+    etcd_service_keys = []
     params['exp']['host'] = host
     params['exp']['zone'] = config.zone
     params['exp']['app_name'] = config.app_name
@@ -181,7 +188,12 @@ def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
         pods = get_pods(pod_names)
 
         logger.info("Set weights for Pod(s)")
-        etcd_service_key = set_weights_rr(pods, config.zone, name)
+        pods_per_fn_and_cluster = {
+            (name, config.zone): pods
+        }
+        lb_pods = get_load_balancer_pods()
+
+        etcd_service_keys = set_loadbalancer_weights(pods_per_fn_and_cluster, lb_pods)
 
         time.sleep(1)
         if config.exp_run_config.exp_name is None:
@@ -194,6 +206,7 @@ def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
         if pod_names is not None:
             logger.info(f'Remove {len(pod_names)} pods')
             remove_pods(pod_names)
-        if etcd_service_key is not None:
+        if len(etcd_service_keys) > 0:
             client = EtcdClient.from_env()
-            client.remove(etcd_service_key)
+            for etcd_service_key in etcd_service_keys:
+                client.remove(etcd_service_key)

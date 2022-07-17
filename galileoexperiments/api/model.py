@@ -60,8 +60,6 @@ class ProfilingWorkloadConfiguration:
     app_name: str
     # the host that will be profiled
     host: str
-    # load balancer ip that forwards requests
-    lb_ip: str
     # the zone in which the host is
     zone: str
     # the kubernetes master hostname
