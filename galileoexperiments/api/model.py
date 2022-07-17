@@ -138,9 +138,6 @@ class ScenarioWorkloadConfiguration:
     # context contains all dependencies, instantiated using `galileo.shell.shell.init`
     context: Dict
 
-    # load balancer ip addresses per zone
-    lb_ips: Dict[str, str]
-
     # per zone: {image: list of profiles - one per client}
     profiles: Dict[str, Dict[str, List[str]]]
 

@@ -9,6 +9,7 @@ from kubernetes.client import V1Deployment, V1ObjectMeta, V1DeploymentSpec, V1La
 from kubernetes.client import V1ResourceRequirements, V1EnvVar, V1EnvVarSource, V1ObjectFieldSelector
 
 from galileoexperiments.api.model import Pod
+from galileoexperiments.utils.constants import zone_label
 
 logger = logging.getLogger(__name__)
 
@@ -134,3 +135,32 @@ def remove_pods(names: List[str]):
     v1 = client.CoreV1Api()
     for name in names:
         v1.delete_namespaced_pod(name, 'default', async_req=False)
+
+def fetch_pods(label: str, value: str):
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+    pods_list = v1.list_namespaced_pod('default')
+    pods = []
+    for pod in pods_list.items:
+        fn_value = pod.metadata.labels.get(label)
+        if fn_value == value:
+            pods.append(pod)
+    return pods
+
+
+def get_load_balancer_pods() -> Dict[str, Pod]:
+    pods = fetch_pods('type', 'api-gateway')
+    lb = {}
+    for pod in pods:
+        # pod name, i.e.: go-load-balancer-deployment-zone-b-xwg9c
+        pod_name = pod.metadata.name
+        zone = f"zone-{pod_name.split('-')[5]}"
+        ip = pod.status.pod_ip
+        # not used
+        pod_id = ''
+        labels = {
+            'type': 'api-gateway',
+            zone_label: zone
+        }
+        lb[zone] = Pod(pod_id, ip, labels, pod_name)
+    return lb

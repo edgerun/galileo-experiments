@@ -10,8 +10,8 @@ from galileoexperiments.api.profiling import GalileoClientGroupConfig
 from galileoexperiments.experiment.run import run_scenario_experiment
 from galileoexperiments.utils.arrivalprofile import clear_list, read_and_save_profile
 from galileoexperiments.utils.constants import function_label, zone_label
-from galileoexperiments.utils.helpers import set_weights_rr, EtcdClient
-from galileoexperiments.utils.k8s import spawn_pods, get_pods, remove_pods
+from galileoexperiments.utils.helpers import EtcdClient, update_weights
+from galileoexperiments.utils.k8s import spawn_pods, get_pods, remove_pods, get_load_balancer_pods
 
 logger = logging.getLogger(__name__)
 
@@ -46,14 +46,8 @@ def _map_pods_to_dict(pods: List[Pod]) -> Dict[Tuple[str, str], List[Pod]]:
     return pods_map
 
 
-def set_loadbalancer_weights(pods: Dict[Tuple[str, str], List[Pod]]):
-    keys = []
-    for t, pods in pods.items():
-        fn = t[0]
-        zone = t[1]
-        key = set_weights_rr(pods, zone, fn)
-        keys.append(key)
-    return keys
+def set_loadbalancer_weights(pods: Dict[Tuple[str, str], List[Pod]], lbs: Dict[str, Pod]):
+    return update_weights(pods, lbs)
 
 
 def set_rtbl(fns: List[str], load_balancers: Dict[str, str], rtbl: RoutingTableHelper) -> List[str]:
@@ -126,12 +120,21 @@ def run_scenario_workload(workload_config: ScenarioWorkloadConfiguration):
     creator = workload_config.creator
     master_node = workload_config.master_node
     client_groups = []
+
+    lb_pods = get_load_balancer_pods()
+    lb_ips = {}
+    for zone, pod in lb_pods.items():
+        lb_ips[zone] = pod.ip
+
+    workload_config.lb_ips = lb_ips
     try:
         client_groups, requests = prepare_client_groups_for_services(workload_config)
         pods = spawn_pods_for_config(workload_config)
-        etcd_service_keys = set_loadbalancer_weights(_map_pods_to_dict(pods))
-        rtbl_services = set_rtbl(list(workload_config.app_names.values()), workload_config.lb_ips, rtbl)
 
+        pods_per_fn_and_cluster = _map_pods_to_dict(pods)
+
+        etcd_service_keys = set_loadbalancer_weights(pods_per_fn_and_cluster, lb_pods)
+        rtbl_services = set_rtbl(list(workload_config.app_names.values()), workload_config.lb_ips, rtbl)
 
         set_params(workload_config)
 
