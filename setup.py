@@ -13,7 +13,7 @@ with open("requirements.txt", "r") as fh:
 
 setuptools.setup(
     name="edgerun-galileo-experiments",
-    version="0.0.2.dev6",
+    version="0.0.2.dev7",
     author="Philipp Raith, Thomas Rausch",
     author_email="p.raith@dsg.tuwien.ac.at, t.rausch@dsg.tuwien.ac.at",
     description="Galileo Experiments",
