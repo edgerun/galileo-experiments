@@ -16,19 +16,26 @@ from galileoexperiments.utils.k8s import spawn_pods, get_pods, remove_pods, get_
 logger = logging.getLogger(__name__)
 
 
-def spawn_pods_for_config(workload_config: ScenarioWorkloadConfiguration) -> List[Pod]:
+def spawn_pods_for_config(workload_config: ScenarioWorkloadConfiguration, lb_pods: Dict[str, str]) -> List[Pod]:
     pod_names = []
     for host, values in workload_config.services.items():
         for image, no_pods in values.items():
             name = workload_config.app_names[image]
 
+            zone = workload_config.zone_mapping[host]
             labels = {
                 function_label: name,
-                zone_label: workload_config.zone_mapping[host]
+                zone_label: zone
             }
+
+            env_vars = {
+                'API_GATEWAY': lb_pods[zone]
+            }
+
             profiling_app = workload_config.profiling_apps[image]
             pod_name_prefix = f'{name}-deployment'
-            names = spawn_pods(image, pod_name_prefix, host, labels, no_pods, profiling_app.pod_factory)
+            names = spawn_pods(image, pod_name_prefix, host, labels, no_pods, profiling_app.pod_factory,
+                               env_vars=env_vars)
             pod_names.extend(names)
     return get_pods(pod_names)
 
@@ -129,7 +136,7 @@ def run_scenario_workload(workload_config: ScenarioWorkloadConfiguration):
     workload_config.lb_ips = lb_ips
     try:
         client_groups, requests = prepare_client_groups_for_services(workload_config)
-        pods = spawn_pods_for_config(workload_config)
+        pods = spawn_pods_for_config(workload_config, lb_ips)
 
         pods_per_fn_and_cluster = _map_pods_to_dict(pods)
 

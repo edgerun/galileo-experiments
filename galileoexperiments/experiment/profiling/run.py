@@ -184,7 +184,13 @@ def _run_profiling_experiment(config: ProfilingExperimentConfiguration):
             zone_label: config.zone
         }
 
-        pod_names = spawn_pods(image, pod_prefix, host, labels, no_pods, config.app_workload_config.pod_factory)
+        lb_pods = get_load_balancer_pods()
+        env_vars = {
+            'API_GATEWAY': lb_pods[config.zone].ip
+        }
+
+        pod_names = spawn_pods(image, pod_prefix, host, labels, no_pods, config.app_workload_config.pod_factory,
+                               env_vars)
         pods = get_pods(pod_names)
 
         logger.info("Set weights for Pod(s)")

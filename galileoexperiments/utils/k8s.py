@@ -1,16 +1,14 @@
 import logging
 import time
-from dataclasses import dataclass
 from typing import List, Dict, Callable
 
 import kubernetes
+from galileoexperiments.api.model import Pod
+from galileoexperiments.utils.constants import zone_label
 from kubernetes import client, config
 from kubernetes.client import V1Deployment, V1ObjectMeta, V1DeploymentSpec, V1LabelSelector, V1PodTemplateSpec, \
     V1PodSpec, V1Toleration, V1Container, V1EnvFromSource, V1ConfigMapEnvSource
-from kubernetes.client import V1ResourceRequirements, V1EnvVar, V1EnvVarSource, V1ObjectFieldSelector
-
-from galileoexperiments.api.model import Pod
-from galileoexperiments.utils.constants import zone_label
+from kubernetes.client import V1EnvVar
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +71,7 @@ def stop_telemd_kubernetes_adapter():
     v1.delete_namespaced_deployment(name='telemd-kubernetes-adapter', namespace='default')
 
 
-def get_pods(pod_names: List[str], v1: client.CoreV1Api=None) -> List[Pod]:
+def get_pods(pod_names: List[str], v1: client.CoreV1Api = None) -> List[Pod]:
     if v1 is None:
         config.load_kube_config()
         v1 = client.CoreV1Api()
@@ -94,7 +92,8 @@ def get_pods(pod_names: List[str], v1: client.CoreV1Api=None) -> List[Pod]:
     return pods
 
 
-def spawn_pods(image: str, name: str, node: str, labels: Dict[str, str], n: int, pod_factory: Callable[[str, str, Dict], client.V1Container]) -> List[str]:
+def spawn_pods(image: str, name: str, node: str, labels: Dict[str, str], n: int,
+               pod_factory: Callable[[str, str, Dict], client.V1Container], env_vars: Dict[str,str]= None) -> List[str]:
     """
     Function spawns n pods on the given node. The pod factory creates the containers to allow
     different kinds of containers.
@@ -104,6 +103,7 @@ def spawn_pods(image: str, name: str, node: str, labels: Dict[str, str], n: int,
     :param labels: labels to attach
     :param n: the number of pods to spawn on the given node
     :param pod_factory: factory function to create V1Containers
+    :param env_vars: a dict containing env variables that will be available in each Pod
     :return: a list containing the names of pods created
     """
     # Configs can be set in Configuration class directly or using helper utility
@@ -114,6 +114,12 @@ def spawn_pods(image: str, name: str, node: str, labels: Dict[str, str], n: int,
     for idx in range(n):
         selector = {'kubernetes.io/hostname': node}
         pod_name = f'{name}-{node}-{idx}'
+        container = pod_factory(pod_name, image, resource_requests)
+
+        if env_vars is not None:
+            for k, v in env_vars.items():
+                container.env.append(V1EnvVar(k, v))
+
         pod = client.V1Pod(
             api_version="v1",
             kind="Pod",
@@ -121,7 +127,17 @@ def spawn_pods(image: str, name: str, node: str, labels: Dict[str, str], n: int,
             spec=client.V1PodSpec(
                 node_selector=selector,
                 containers=[
-                    pod_factory(pod_name, image, resource_requests)
+                    container
+                ],
+                volumes=[
+                    {
+                        'name': 'podinfo',
+                        'downwardAPI': {
+                            'items': [
+                                {'path': 'labels', 'fieldRef': {'fieldPath': 'metadata.labels'}}
+                            ]
+                        }
+                    }
                 ]
             ),
         )
@@ -139,6 +155,7 @@ def remove_pods(names: List[str]):
             v1.delete_namespaced_pod(name, 'default', async_req=False)
         except kubernetes.client.exceptions.ApiException:
             logger.debug(f'Pod {name} was not available to teardown anymore')
+
 
 def fetch_pods(label: str, value: str):
     config.load_kube_config()
