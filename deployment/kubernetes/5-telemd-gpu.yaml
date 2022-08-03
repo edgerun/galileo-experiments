@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: telemd-cpu
+  name: telemd-gpu
   labels:
-    app: telemd-cpu
+    app: telemd-gpu
 spec:
   selector:
     matchLabels:
-      app: telemd-cpu
+      app: telemd-gpu
   template:
     metadata:
       labels:
-        app: telemd-cpu
+        app: telemd-gpu
     spec:
       nodeSelector:
-        telemd.edgerun.io/mode: cpu
+        telemd.edgerun.io/mode: gpu
       hostNetwork: true
       volumes:
       - name: sys
@@ -25,7 +25,7 @@ spec:
          path: /proc
       containers:
       - name: telemd
-        image: edgerun/telemd:0.9.5
+        image: edgerun/telemd-gpu:0.9.5
         env:
         - name: telemd_nodename
           valueFrom:

@@ -14,8 +14,10 @@ data:
   telemd_period_kubernetes_cgrp_cpu: "1s"
   telemd_period_kubernetes_cgrp_blkio: "1s"
   telemd_period_kubernetes_cgrp_memory: "1s"
+  telemd_period_kubernetes_cgrp_net: "1s"
   telemd_period_psi_cpu: "1s"
   telemd_period_psi_io: "1s"
   telemd_period_psi_memory: "1s"
   telemd_redis_url: redis-url
-  telemd_instruments_disable: docker_cgrp_cpu docker_cgrp_net docker_cgrp_blkio
+  telemd_instruments_disable: docker_cgrp_cpu docker_cgrp_net docker_cgrp_blkio docker_cgrp_memory
+  telemd_proc_mount: /proc_host

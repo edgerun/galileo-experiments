@@ -104,6 +104,13 @@ You can easily group your nodes by labelling it with the following command:
 
     kubectl label node <node> ether.edgerun.io/zone=main
 
+Further, `telemd` also offers support to monitor GPUs.
+Therefore, you have to label your nodes accordingly:
+
+    kubectl label node <node> telemd.edgerun.io/mode=[cpu|gpu]
+
+See more information for GPU monitoring in the [GPU support branch](https://github.com/edgerun/telemd/tree/gpu-support). 
+
 ## Galileo Workers
 
 The galileo workers run on each client node and is connected via Redis to receive commands and also the routing rules.
