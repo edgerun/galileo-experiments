@@ -46,12 +46,15 @@ def run_profiling_workload(workload_config: ProfilingWorkloadConfiguration):
     host = workload_config.host
     image = workload_config.image
     profiling_app = workload_config.profiling_app
-
-    lb_pods = get_load_balancer_pods()
-    lb_ips = {}
-    for cluster, pod in lb_pods.items():
-        lb_ips[cluster] = pod.ip
-    workload_config.lb_ip = lb_ips[workload_config.zone]
+    if workload_config.lb_ip is None:
+        lb_pods = get_load_balancer_pods()
+        lb_ips = {}
+        for cluster, pod in lb_pods.items():
+            lb_ips[cluster] = pod.ip
+        workload_config.lb_ip = lb_ips[workload_config.zone]
+    else:
+        # we use the given load balancer ip
+        pass
 
     if workload_config.params.get('exp') is None or workload_config.params['exp'].get('requests') is None:
         workload_config.params['exp'] = {

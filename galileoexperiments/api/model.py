@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass
 from typing import Dict, Callable, Optional, List, Tuple, Union
 
@@ -48,7 +47,6 @@ class ExperimentRunConfiguration:
         return self.galileo_context['rds']
 
 
-
 @dataclass
 class ProfilingWorkloadConfiguration:
     """
@@ -82,6 +80,8 @@ class ProfilingWorkloadConfiguration:
     ia: Union[float, Tuple] = None
     # number of clients
     n_clients: int = None
+    # optional load balancer ip, if None, will be read dynamically based on given zone
+    lb_ip: str = None
 
     @property
     def galileo(self) -> Galileo:
@@ -187,9 +187,9 @@ class ProfilingExperimentConfiguration:
     def rtbl(self) -> RoutingTableHelper:
         return self.exp_run_config.rtbl
 
+
 @dataclass
 class ScenarioExperimentConfiguration:
     # apps per (function, zone)
     apps: List[AppWorkloadConfiguration]
     exp_run_config: ExperimentRunConfiguration
-
