@@ -19,12 +19,11 @@ logger = logging.getLogger(__name__)
 def spawn_pods_for_config(workload_config: ScenarioWorkloadConfiguration, lb_pods: Dict[str, str]) -> List[Pod]:
     pod_names = []
     for host, values in workload_config.services.items():
-        for image, no_pods in values.items():
-            name = workload_config.app_names[image]
+        for fn, no_pods in values.items():
 
             zone = workload_config.zone_mapping[host]
             labels = {
-                function_label: name,
+                function_label: fn,
                 zone_label: zone
             }
 
@@ -32,8 +31,11 @@ def spawn_pods_for_config(workload_config: ScenarioWorkloadConfiguration, lb_pod
                 'API_GATEWAY': lb_pods[zone]
             }
 
-            profiling_app = workload_config.profiling_apps[image]
-            pod_name_prefix = f'{name}-deployment'
+            profiling_app = workload_config.profiling_apps[fn]
+            pod_name_prefix = f'{fn}-deployment'
+
+            # get container image
+            image = workload_config.app_names[fn]
             names = spawn_pods(image, pod_name_prefix, host, labels, no_pods, profiling_app.pod_factory,
                                env_vars=env_vars)
             pod_names.extend(names)
@@ -78,16 +80,16 @@ def prepare_client_groups_for_services(workload_config: ScenarioWorkloadConfigur
                                                                                                         str, str, ClientGroup]], Callable]:
     client_groups = []
     for zone, values in workload_config.profiles.items():
-        for image, profiles in values.items():
+        for fn, profiles in values.items():
 
             n_clients = len(profiles)
             client_group_config = GalileoClientGroupConfig(
                 n_clients=n_clients,
                 zone=zone,
-                fn_name=workload_config.app_names[image],
-                params=workload_config.app_params[image]
+                fn_name=fn,
+                params=workload_config.app_params[fn]
             )
-            profiling_app = workload_config.profiling_apps[image]
+            profiling_app = workload_config.profiling_apps[fn]
             rds = workload_config.rds
             galileo = workload_config.galileo
             client_group = profiling_app.spawn_group(n_clients, rds, galileo, client_group_config)
@@ -97,7 +99,7 @@ def prepare_client_groups_for_services(workload_config: ScenarioWorkloadConfigur
                 clear_list(client.client_id, rds)
                 read_and_save_profile(profile_path, client, rds)
 
-            client_groups.append((image, zone, client_group))
+            client_groups.append((fn, zone, client_group))
 
     def requests():
         for idx, group in enumerate(client_groups):
@@ -141,7 +143,7 @@ def run_scenario_workload(workload_config: ScenarioWorkloadConfiguration):
         pods_per_fn_and_cluster = _map_pods_to_dict(pods)
 
         etcd_service_keys = set_loadbalancer_weights(pods_per_fn_and_cluster, lb_pods)
-        rtbl_services = set_rtbl(list(workload_config.app_names.values()), workload_config.lb_ips, rtbl)
+        rtbl_services = set_rtbl(list(workload_config.app_names.keys()), workload_config.lb_ips, rtbl)
 
         set_params(workload_config)
 
@@ -153,11 +155,11 @@ def run_scenario_workload(workload_config: ScenarioWorkloadConfiguration):
         )
         app_configs = []
 
-        for (image, zone, client_group) in client_groups:
+        for (fn, zone, client_group) in client_groups:
             app_workload_config = AppWorkloadConfiguration(
-                app_container_image=image,
+                app_container_image=workload_config.app_params[fn],
                 requests=lambda x: None,
-                pod_factory=workload_config.profiling_apps[image].pod_factory
+                pod_factory=workload_config.profiling_apps[fn].pod_factory
             )
             app_configs.append(app_workload_config)
 
