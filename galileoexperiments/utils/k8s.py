@@ -163,6 +163,10 @@ def fetch_pods(label: str, value: str):
     pods_list = v1.list_namespaced_pod('default')
     pods = []
     for pod in pods_list.items:
+        if pod.metadata.labels is None:
+            # labels object does not have to be set and can be None: ignore
+            continue
+
         fn_value = pod.metadata.labels.get(label)
         if fn_value == value:
             pods.append(pod)
