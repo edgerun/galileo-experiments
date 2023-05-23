@@ -1,5 +1,5 @@
 edgerun-galileo==0.10.4.dev2
-galileo-db==0.10.4.dev1
+galileo-db>=0.10.5.dev2
 
 redis~=3.5.3
 mysql-connector-python==8.0.16
