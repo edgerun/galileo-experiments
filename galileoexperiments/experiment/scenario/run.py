@@ -100,12 +100,13 @@ def prepare_client_groups_for_services(workload_config: ScenarioWorkloadConfigur
             client_groups.append((image, zone, client_group))
 
     def requests():
+        all_cmds = []
         for idx, group in enumerate(client_groups):
-            if idx == len(client_groups) - 1:
-                # TODO the wait here might return sooner than other profiles => implement solution that waits for all
-                group[2].request(ia=('prerecorded', 'ran')).wait()
-            else:
-                group[2].request(ia=('prerecorded', 'ran'))
+            cmd = group[2].request(ia=('prerecorded', 'ran'))
+            all_cmds.append(cmd)
+
+        for cmd in all_cmds:
+            cmd.wait()
 
     return client_groups, requests
 
