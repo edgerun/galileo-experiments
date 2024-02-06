@@ -18,7 +18,7 @@ def start_telemd_kubernetes_adapter(master_node: str) -> V1Deployment:
     config.load_kube_config()
 
     v1 = client.AppsV1Api()
-    image = 'edgerun/telemd-kubernetes-adapter:0.1.19'
+    image = 'edgerun/telemd-kubernetes-adapter:0.1.20'
     return v1.create_namespaced_deployment(pretty=True, namespace='default',
                                            body=V1Deployment(
                                                api_version='apps/v1',
